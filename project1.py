@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # create variables v_{d,s,k} (nurse N_k, shift (d,s))
     v = [[[i+1 + j*D + k*S*D for k in range(n)] for j in range(S)] for i in range(D)]
     vpool = IDPool()
-    vpool.top = 60
+    vpool.top = D*S*n
 
     for d in range(D):
         for s in range(S):
