@@ -55,6 +55,19 @@ def parse_input():
     return D, S, R, n, N, P
 
 
+def print_output(model, cost, D, S, n, v):
+    print(cost)
+    for d in range(D):
+        for s in range(S):
+            total = 0
+            str_k = ""
+            for k in range(n):
+                if v[d][s][k] in model:
+                    total += 1
+                    str_k += str(k + 1) + " "
+            print(str(total) + " " + str_k[:-1])
+
+
 if __name__ == "__main__":
     D, S, R, n, N, P = parse_input()
     solver = RC2(WCNF())
@@ -115,5 +128,4 @@ if __name__ == "__main__":
         for clause in enc:
             solver.add_clause(clause)
 
-    print("Model", solver.compute())
-    print("Cost:", solver.cost)
+    print_output(solver.compute(), solver.cost, D, S, n, v)
