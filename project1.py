@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass
 from pysat.solvers import Glucose4
 from pysat.card import CardEnc, EncType
+from pysat.formula import IDPool
 
 @dataclass
 class Nurse:
@@ -60,22 +61,52 @@ if __name__ == "__main__":
 
     # create variables v_{d,s,k} (nurse N_k, shift (d,s))
     v = [[[i+1 + j*D + k*S*D for k in range(n)] for j in range(S)] for i in range(D)]
-    top_v = n*S*D
+    vpool = IDPool()
+    vpool.top = 60
 
     for d in range(D):
         for s in range(S):
             # Constraint 1: Each shift s of day d has at least R_{s,d} nurses assigned
             r = R[d][s]
-            enc = CardEnc.atleast(lits=v[d][s], bound=r, top_id=top_v, encoding=EncType.mtotalizer)
+            enc = CardEnc.atleast(lits=v[d][s], bound=r, vpool=vpool, encoding=EncType.mtotalizer)
             for clause in enc.clauses:
                 solver.add_clause(clause)
 
             # Constraint 2: Each shift s of day d has at least one nurse with managerial qualification
             solver.add_clause([v[d][s][k] for k in range(n) if N[k].is_mngr])  
 
-        # Constraint 3: The workload of a nurse in a given day is continuous
+            # Constraint 6: A nurse N_k is never assigned to a shift where it is declared as unavailable
+            for k in range(n):
+                if P[d][s][k] == -1:
+                    solver.add_clause(-v[d][s][k])
+
         for k in range(n):
+            # Constraint 3: The workload of a nurse in a given day is continuous
             for s in range(S):
                 for m in range(s+2, S):
-                    print([-v[d][s][k], v[d][s+1][k], -v[d][m][k]])
                     solver.add_clause([-v[d][s][k], v[d][s+1][k], -v[d][m][k]])
+
+            # Constraint 4: During a day, the number of shifts for a nurse N_k is always between L_k^min and L_k^max
+            l_min = N[k].l_min
+            l_max = N[k].l_max
+
+            v_d_k = [v[d][s][k] for s in range(S)]
+            enc_min = CardEnc.atleast(lits=v_d_k, bound=l_min, vpool=vpool, encoding=EncType.mtotalizer)
+            for clause in enc_min:
+                solver.add_clause(clause)
+
+            enc_max = CardEnc.atmost(lits=v_d_k, bound=l_max, vpool=vpool, encoding=EncType.mtotalizer)
+            for clause in enc_max:
+                solver.add_clause(clause)
+
+
+    # Constraint 5: A nurse N_k is never assigned more than H_k shiifts in the period
+    for k in range(n):
+        v_k = [v[d][s][k] for d in range(D) for s in range(S)]
+        h = N[k].h
+        enc = CardEnc.atmost(lits=v_k, bound=h, vpool=vpool, encoding=EncType.mtotalizer)
+        for clause in enc:
+            solver.add_clause(clause)
+
+
+
