@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pysat.formula import WCNF, IDPool
 from pysat.pb import PBEnc
 from pysat.card import EncType, CardEnc
+from pysat.examples.rc2 import RC2
 
 @dataclass
 class Nurse:
@@ -57,9 +58,7 @@ def parse_input():
     return D, S, R, N, P
 
 
-# Each shift s of day d has at least R{s,d} Nurses assigned to it
-# R{s,d} generates a Shift Table with requirements, for each one of them, there are n variables associated with participation 
-# For each shift s:
+# For each shift:
 #   0. Participation of a Nurse N in shift s is a variable xi
 #   1. check SUM(N[i]) >= R{s,d}
 #   2. check SUM(Mng[i]) >= 1
@@ -67,19 +66,34 @@ def parse_input():
 #   4. For Nurse N, for day d, SUM(x[i]) >= Lmin && SUM(x[i]) <= Lmax
 #   5. For Nurse N, SUM(x[i]) <= H(N)
 #   6. For Nurse N, for shift s in day d, if Nurse is unavailable, associated var is set to False
-#
-# Variables to use:
-# Participation of Nurse n in shift s of day d. For example, for 3 days with 2 shifts each, there's gonna be 6 total shifts. For 4 Nurses, there's 24 variables
-# Additionaly, there's n more variables, associated with the managerial property of some nurses, i.e. x25 indicates if Nurse 1 is a Manager
-# Also, each of the initial s*d*n vars has an associated weight, this being the cost of turning it to 1
+#   7. The SUM of positive values in P is minimized
 
-def hard_constraints(D,S,R,N,P):
+def get_vals_x(vpool: IDPool, x: int):
+    return vpool.obj(abs(x))
+
+def print_output(model,cost,vpool):
+    participants = [[[] for _ in range(S)] for _ in range(D)]
+    for lit in model:
+        if lit > 0:
+            key = get_vals_x(vpool,lit)
+            if key:
+
+                day,shift,nurse_id = key
+                participants[day][shift].append(nurse_id+1)
+    print(cost)
+    for d in range(D):
+        for s in range (S):
+            listToStr = ' '.join([str(element) for element in participants[d][s]])
+            print(len(participants[d][s]), listToStr)
+
+
+def solve(D,S,R,N,P):
     formula = WCNF()
     vpool = IDPool(start_from=1)
     n = len(N)
 
     def x(d,s,n):
-        return vpool.id(('x',d,s,n))
+        return vpool.id((d,s,n))
     
     # ::Constraint 0::
     # Create the base variables: Participation of Nurse_k in shift s in day d
@@ -93,16 +107,18 @@ def hard_constraints(D,S,R,N,P):
             day.append(shift)
         nurse_in_shift.append(day)
         
-    print("Nurses:", nurse_in_shift)
+    #print("Nurses:", nurse_in_shift)
     #print("List P:", P)
 
-    cycles = 0      # IMPROVE BY REDUCING CYCLES
+######################################################
+######################################################
 
-    # Create the Hard Constraints
+    cycles = 0      # IMPROVE BY REDUCING CYCLES
+    nurse_shift_cost = []
+
+    # Create the Constraints
     for i_day in range(D):
         for i_shift in range(S):
-            #print("Day " + str(i_day) + ", Shift " +  str(i_shift) + ", Req. " + str(R[i_day][i_shift]))
-
             managers = []
             literals = []
             for i_nurse in range(n):
@@ -113,39 +129,37 @@ def hard_constraints(D,S,R,N,P):
                 # If P{i_nurse,i_shift,i_day} < 0, Nurse is unavailable in this shift in this day
                 if P[i_day][i_shift][i_nurse] < 0:
                     formula.append([-nurse_id])
-                    continue
 
+                # ::Constraint 7::
+                # Minimize cost of assignment
+                formula.append([-nurse_id], weight=P[i_day][i_shift][i_nurse])
+                
                 literals.append(nurse_id)
 
                 if N[i_nurse].is_mngr:
                     managers.append(nurse_id)
                 
                 # ::Constraint 3::
-                # Nurses can only do continuous shifts, so no 1-0-1 shift scheme in a day (~xi[s-1] \/ xi[s] \/ xi[s+1])
-                if i_shift not in [0,S-1]:
-                    clause = [-(nurse_id-1),nurse_id,-(nurse_id+1)]
-                    #print("DEBUG:",i_shift, clause)
-                    formula.append(clause)
+                # Nurses can only do continuous shifts, so no 1-0-...-0-1 shift scheme in a day (~xi[s-1] \/ xi[s] \/ xi[s+1])
+                if i_shift != (S-1):
+                    for d in range(i_shift+2,S):
+                        formula.append([-x(i_day,i_shift,i_nurse),x(i_day,i_shift+1,i_nurse),-x(i_day,d,i_nurse)])
                 
                 nurse_day = []
-                if (nurse_id % 4 == 1):
+                if (i_shift == 0):
                     l_min, l_max = N[i_nurse].l_min, N[i_nurse].l_max
                     for j in range(S):
                         cycles += 1         # IMPROVE BY REDUCING CYCLES
-                        nurse_day.append(nurse_id+j)
+                        nurse_day.append(x(i_day,i_shift+j,i_nurse))
                     
                     # ::Constraint 4::
                     # For Nurse N, for day d, SUM(x[i]) >= Lmin && SUM(x[i]) <= Lmax
-                    enc = CardEnc.atleast(lits=nurse_day, vpool=vpool, bound=l_min, encoding=EncType.seqcounter)   # Encoding Type could be another!
-                    #print("Nurse " + str(i_nurse) + " min of " + str(l_min), enc.clauses)
-                    formula.extend(enc.clauses)
+                    formula.extend(CardEnc.atleast(lits=nurse_day, vpool=vpool, bound=l_min, encoding=EncType.seqcounter).clauses)
+                    formula.extend(CardEnc.atmost(lits=nurse_day, vpool=vpool, bound=l_max, encoding=EncType.seqcounter).clauses)
                     
-                    enc = CardEnc.atmost(lits=nurse_day, vpool=vpool, bound=l_max, encoding=EncType.seqcounter)   # Encoding Type could be another!
-                    #print("Nurse " + str(i_nurse) + " max of " + str(l_max), enc.clauses)
-                    formula.extend(enc.clauses)
                 
                 nurse_total = []
-                if (nurse_id % 12 == 1):
+                if (i_shift == 0 and i_day == 0):
                     total_max = N[i_nurse].h
                     #print("First shift of the Nurse:",nurse_id)
                     for j in range(D*S):
@@ -154,34 +168,45 @@ def hard_constraints(D,S,R,N,P):
 
                     # ::Constraint 5::
                     # For Nurse N, SUM(x[i]) <= H(N)
-                    enc = CardEnc.atmost(lits=nurse_total, vpool=vpool, bound=total_max, encoding=EncType.seqcounter)   # Encoding Type could be another!
-                    #print("Nurse " + str(i_nurse) + " total max of " + str(total_max), enc.clauses)
-                    formula.extend(enc.clauses)
-               
+                    formula.extend(CardEnc.atmost(lits=nurse_total, vpool=vpool, bound=total_max, encoding=EncType.seqcounter).clauses)
+
             #print("Literals:", literals)
 
             # ::Constraint 1::
-            # For R{day,shift}, add constraints: SUM(x{day,shift}) >= R{day,shift} (atleast, for literals in reference with shift s of day d)
-            enc = CardEnc.atleast(lits=literals, vpool=vpool, bound=R[i_day][i_shift], encoding=EncType.seqcounter)   # Encoding Type could be another!
-            #print("Minimum Required:", enc.clauses)
-            formula.extend(enc.clauses)
+            # For R{day,shift}, add constraints: SUM(x{day,shift}) >= R{day,shift}
+            formula.extend(CardEnc.atleast(lits=literals, vpool=vpool, bound=R[i_day][i_shift], encoding=EncType.seqcounter).clauses)
 
             # ::Contraint 2::
-            # For shift s in day d, add constraint: SUM(Mng[i]) >= 1 (for the nurses possibly involved in the shift, the sum of the manager variables is at least 1)
-            enc = CardEnc.atleast(lits=managers, vpool=vpool, bound=1, encoding=EncType.seqcounter)   # Encoding Type could be another!
-            #print("Managers:", enc.clauses)
-            formula.extend(enc.clauses)
+            # For shift s in day d, add constraint: SUM(Mng[i]) >= 1
+            formula.extend(CardEnc.atleast(lits=managers, vpool=vpool, bound=1, encoding=EncType.seqcounter).clauses)
 
     #print("Hard Clauses:", formula.hard)
-    print("Number of Vars:", formula.nv)
-    print("Number of Hard Clauses:", len(formula.hard))
-    print("Number of Soft Clauses:", len(formula.soft))
-    print("Number of cycles:", cycles)   # IMPROVE BY REDUCING CYCLES
+    #print("Soft Clauses:", formula.soft)
+    #print("Number of Vars:", formula.nv)
+    #print("Number of Hard Clauses:", len(formula.hard))
+    #print("Number of Soft Clauses:", len(formula.soft))
+    #print("Number of cycles:", cycles)   # IMPROVE BY REDUCING CYCLES
+
+######################################################
+######################################################
+
+    solver = RC2(formula)
+
+    model = solver.compute()
+    cost = solver.cost
+    print_output(model,cost, vpool)
+    
+    solver.add_clause([-model[i] for i in range(len(model))])
+    model = solver.compute()
+    cost = solver.cost
+    print_output(model,cost,vpool)
 
 
-        
-        
+    
+    #print("Model:", model)
+    #print("Cost:", cost)
     
 
-D,R,S,N,P = parse_input()
-hard_constraints(D,R,S,N,P)
+
+D,S,R,N,P = parse_input()
+solve(D,S,R,N,P)
