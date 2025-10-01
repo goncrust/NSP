@@ -4,9 +4,9 @@
 
 import sys
 from dataclasses import dataclass
-from pysat.solvers import Glucose4
+from pysat.examples.rc2 import RC2
 from pysat.card import CardEnc, EncType
-from pysat.formula import IDPool
+from pysat.formula import IDPool, WCNF
 
 @dataclass
 class Nurse:
@@ -57,7 +57,7 @@ def parse_input():
 
 if __name__ == "__main__":
     D, S, R, n, N, P = parse_input()
-    solver = Glucose4()
+    solver = RC2(WCNF())
 
     # create variables v_{d,s,k} (nurse N_k, shift (d,s))
     v = [[[i+1 + j*D + k*S*D for k in range(n)] for j in range(S)] for i in range(D)]
@@ -75,10 +75,17 @@ if __name__ == "__main__":
             # Constraint 2: Each shift s of day d has at least one nurse with managerial qualification
             solver.add_clause([v[d][s][k] for k in range(n) if N[k].is_mngr])  
 
-            # Constraint 6: A nurse N_k is never assigned to a shift where it is declared as unavailable
             for k in range(n):
-                if P[d][s][k] == -1:
-                    solver.add_clause(-v[d][s][k])
+                cost = P[d][s][k]
+
+                # Constraint 6: A nurse N_k is never assigned to a shift where it is declared as unavailable
+                if cost == -1:
+                    solver.add_clause([-v[d][s][k]])
+
+                # Constraint 7: The total cost of assigning nurses to shifts is minimized
+                if cost > 0:
+                    solver.add_clause([-v[d][s][k]], weight=cost)
+                
 
         for k in range(n):
             # Constraint 3: The workload of a nurse in a given day is continuous
@@ -108,5 +115,5 @@ if __name__ == "__main__":
         for clause in enc:
             solver.add_clause(clause)
 
-
-
+    print("Model", solver.compute())
+    print("Cost:", solver.cost)
