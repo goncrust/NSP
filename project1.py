@@ -4,7 +4,8 @@
 
 import sys
 from dataclasses import dataclass
-
+from pysat.solvers import Glucose4
+from pysat.card import CardEnc, EncType
 
 @dataclass
 class Nurse:
@@ -50,4 +51,31 @@ def parse_input():
             P_d.append([int(p) for p in line])
         P.append(P_d)
 
-    return D, S, R, N, P
+    return D, S, R, n, N, P
+
+
+if __name__ == "__main__":
+    D, S, R, n, N, P = parse_input()
+    solver = Glucose4()
+
+    # create variables v_{d,s,k} (nurse N_k, shift (d,s))
+    v = [[[i+1 + j*D + k*S*D for k in range(n)] for j in range(S)] for i in range(D)]
+    top_v = n*S*D
+
+    for d in range(D):
+        for s in range(S):
+            # Constraint 1: Each shift s of day d has at least R_{s,d} nurses assigned
+            r = R[d][s]
+            enc = CardEnc.atleast(lits=v[d][s], bound=r, top_id=top_v, encoding=EncType.mtotalizer)
+            for clause in enc.clauses:
+                solver.add_clause(clause)
+
+            # Constraint 2: Each shift s of day d has at least one nurse with managerial qualification
+            solver.add_clause([v[d][s][k] for k in range(n) if N[k].is_mngr])  
+
+        # Constraint 3: The workload of a nurse in a given day is continuous
+        for k in range(n):
+            for s in range(S):
+                for m in range(s+2, S):
+                    print([-v[d][s][k], v[d][s+1][k], -v[d][m][k]])
+                    solver.add_clause([-v[d][s][k], v[d][s+1][k], -v[d][m][k]])
