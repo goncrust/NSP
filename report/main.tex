@@ -36,6 +36,8 @@
 \documentclass[sigconf]{acmart}
 \settopmatter{printacmref=false}
 
+\usepackage{url}
+
 
 %% 
 %% To ensure 100% compatibility, please check the white list of
@@ -57,7 +59,7 @@
 \acmDOI{}
 \acmISBN{}
 \setcopyright{none}
-\acmConference[ACL]{}{Algorithms for Computational Logic}{04-10-2025}
+\acmConference[ACL]{}{algorithms for Computational Logic}{04-10-2025}
 
 \makeatletter
 \patchcmd{\maketitle}{\@copyrightyear.}{}{}{}
@@ -142,133 +144,96 @@
 \maketitle
 
 \section{Description of the Problem}
-The problem in question is to create an optimal shift schedule for nurses working in a hospital during a given period of days, respecting some constraints:
+The Nurse Scheduling Problem (NSP) involves creating an optimal shift schedule for nurses working in a hospital over a given period of days, subject to some constraints:
 
 \begin{enumerate}
-    \item Each shift has a minimum number of nurses necessary for the normal functioning of the hospital.
-    \item Each shift requires at least one nurse with managerial qualifications.
-    \item A nurse's daily schedule has to be continuous, meaning that there are no gaps in between assigned shifts.
-    \item Each nurse has a minimum and maximum daily workload.
-    \item The total number of shifts that can be assigned to a nurse for the whole period is limited.
+    \item Each shift requires a minimum number of nurses for the normal functioning of the hospital.
+    \item Each shift must have at least one nurse with managerial qualifications.
+    \item A nurse's assigned shifts on any given day must be continuous, with no gaps in between.
+    \item Each nurse has a minimum and maximum daily workload, defined by the number of assigned shifts.
+    \item The total number of shifts that can be assigned to a nurse for the entire period is limited.
     \item A nurse cannot be assigned to shifts when it's known they're unavailable to work.
-    \item All nurses' shift preferences, known beforehand, have to be taken into account, being an optimal solution one in which the most nurses are happy with their schedule.
+    \item The schedule must consider nurses' shift preferences. An optimal solution aims to minimize the total cost associated with the assignments.
 \end{enumerate}
 
 \section{Description of the Encoding}
-This problem can be modeled as a MaxSAT problem. To solve it we first need to define variables which can then be used to encode the constraints above. This encoding can then be fed into a MaxSAT solver and an optimal solution will be generated. Let us define the variables of the problem.
+This problem can be modeled and solved using Maximum Satisfiability (MaxSAT). We first define a set of variables to represent the schedule and then encode the problem's constraints as clauses. This encoding is then passed to a MaxSAT solver to find an optimal solution.
+
 \subsection{Definition of Variables}
 \begin{itemize}
-    \item Let $D$ be a positive integer representing the number of days.
-    \item Let $S$ be a positive integer representing the number of shifts per day, all with the same duration, that cover the full 24 hours. For example if $S=4$, each shift will have 6 hours.
-    \item Let $R_{s,d}$ define the minimum number of nurses required for shift $s$ $(1\leq s \leq S)$ at day $d$ $(1\leq d \leq D)$.
-    \item Let $N = {\{N_1, N_2,...,N_n}\}$ be a set of $n$ positive integers representing the available nurses to be assigned to work in the shifts.
-    \item Let $M \subseteq N$ define the subset of nurses with managerial qualifications.
-    \item Let $k_{{min}}$ and $k_{{max}}$ define the minimum and maximum number of shifts for nurse $N_k$ $(1 \leq k \leq n)$ in any given day.
-    \item Let $H_k$ define the maximum total number of shifts that can be assigned to nurse $N_k$ for the whole period.
-    \item Let $P_{k,s,d}$ be a set of $n \times S \times D$ integers representing the cost of assigning nurse $N_k$ to shift $s$ in day $d$. If $P_{k,s,d} = -1$, nurse $N_k$ is not available for shift $s$ in day $d$. All other values in $P$ are positive.
-    \item Let $X = {\{x_1,x_2,...,x_i \}}$, for any $i \leq n \times S \times D$, be a set of variables, each taking a value in $\{0,1\}$ such that $x_i=1$ iff the nurse is assigned to that shift. What nurse is assigned to what shift in which day is clarified below.
-    \item Let there be within $X$ $k$ subsets $X_k$ of $S \times D$ variables, each associated with nurse $N_k$. For example, $X_1$ is associated with nurse $N_1$ and contains the first $S \times D$ variables, $X_2$ is associated with nurse $N_2$ and contains the next $S \times D$ variables, and so on. 
-    \item Let there be within each $X_k$ $D$ subsets $X_{k,d}$ of $S$ variables, each associated with nurse $N_k$ and day $d$. For example, $X_{1,1}$ represents $d=1$ of $N_1$ and contains the first $S$ variables, $X_{1,2}$ represents $d=2$ of $N_1$ and contains the next $S$ variables, and so one.
-    \item Within each $X_{k,d}$, there are $S$ variables, each representing the participation of nurse $N_k$ for day $d$ in each shift. For example, $X_{1,1,1}=x_1$ and encodes the participation of nurse $N_1$ in shift $s=1$ in day $d=1$, $X_{1,1,2}=x_2$ and encodes the participation of nurse $N_2$ in shift $s=1$ in day $d=1$, and so on. We can essentially represent $x_i$ as $X_{k,d,s}$ and vice-versa. An example will be given below for better understanding.
-    \item Let $L_{d,s}$ be a subset of $X$ that contains all variables $x_i$ associated with shift $s$ of day $d$.
+    \item Let $D$ be a positive integer representing the number of days in the scheduling period.
+    \item Let $S$ be a positive integer representing the number of shifts per day, all with the same duration, that cover the full 24 hours. For example, if $S = 4$, each shift will have 6 hours.
+    \item Let $R_{s,d}$ be the minimum number of nurses required for shift $s$ ($1 \le s \le S$) on day $d$ ($1 \le d \le D$).
+    \item Let $N = \{N_1, N_2, \dots, N_n\}$ be the set of $n$ available nurses.
+    \item Let $M \subseteq N$ be the subset of nurses with managerial qualifications.
+    \item Let $k_{\min}$ and $k_{\max}$ be the minimum and maximum number of shifts for nurse $N_k$ ($1 \le k \le n$) in any given day.
+    \item Let $H_k$ be the maximum total number of shifts that can be assigned to nurse $N_k$ over the entire period.
+    \item Let $P_{k,s,d}$ be the cost of assigning nurse $N_k$ to shift $s$ on day $d$. If $P_{k,s,d} = -1$, nurse $N_k$ is not available for that shift. All other costs are positive integers representing preferences (a lower cost is better).
+    \item Let $x_{k,s,d}$ be a Boolean variable such that $x_{k,s,d} = 1$ if nurse $N_k$ is assigned to shift $s$ on day $d$, and $x_{k,s,d} = 0$ otherwise.
 \end{itemize}
 
-Let $D=2$, $S=2$ and $N=\{N_1,N_2,N_3 \}$ such that $X = \{x_1,x_2,...x_{12} \}$.
-
-\vspace{0.3em}
-\begin{center}
-    \begin{tabular}{ccc}
-        \toprule
-        \textbf{Nurse 1} & \textbf{Shift 1} & \textbf{Shift 2} \\
-        \midrule
-        Day 1 & $x_1$ & $x_2$ \\
-        Day 2 & $x_3$ & $x_4$ \\
-        \bottomrule
-    \end{tabular}
-
-    \vspace{1em} % Adds a controlled vertical space between tables
-
-    \begin{tabular}{ccc}
-        \toprule
-        \textbf{Nurse 2} & \textbf{Shift 1} & \textbf{Shift 2} \\
-        \midrule
-        Day 1 & $x_5$ & $x_6$ \\
-        Day 2 & $x_7$ & $x_8$ \\
-        \bottomrule
-    \end{tabular}
-
-    \vspace{1em} % Adds a controlled vertical space between tables
-
-    \begin{tabular}{ccc}
-        \toprule
-        \textbf{Nurse 3} & \textbf{Shift 1} & \textbf{Shift 2} \\
-        \midrule
-        Day 1 & $x_9$ & $x_{10}$ \\
-        Day 2 & $x_{11}$ & $x_{12}$ \\
-        \bottomrule
-    \end{tabular}
-\end{center}
-\vspace{0.3em}
-
-Any $X_{k,s,d}$ can be represented as $x_i$:
-\[
-    i = (S \cdot D)(k - 1) + S(d - 1) + s
-\]
-
-%% ACHO QUE ISTO ESTÁ UM BOCADO CONFUSO E DESNECESSÁRIO, SQUE MUDA-SE!!!!!!!!!!!!!!!!!
-On the contrary, for $i=7$, we know that $x_i \in X_2$ due to the size of any $X_k$ being $D*S$, and further we know that $x_i \in X_{2,2}$ due to the size of any $X_{k,d}$ being $S$. Finally, we can use the previous equation to find that $x_7 = X_{2,2,1}$.
-
-Thus, $x_i = X_{k,s,d} = 1$ iff nurse $N_k$ is assigned to shift $s$ in day $d$. For instance, $x_9=1$ iff nurse $N_3$ is assigned to the shift $s=1,d=1$. Within our program this set X is cleanly managed by the PySAT IDPool class.
-
 \subsection{Modeling Constraints}
-Having defined the necessary variables, we can now describe the encoding we chose to model the initial constraints.
+The constraints are modeled as a combination of hard and soft clauses. Hard clauses must be satisfied, while soft clauses represent preferences that the solver will try to satisfy by minimizing the total weight of the unsatisfied clauses.
 
-\begin{equation}
-    \sum_{x_j \in L_{d,s}} x_j \geq R_{s,d}, \quad \forall d \in [1,D], s \in [1,S]
-\end{equation}
+\subsubsection{Hard Clauses}
 
-\begin{equation}
-    \sum_{x_j \in L_{s,d}} x_j \geq 1, \quad \forall k,s,d: s \in [1,S], d \in [1,D], N_k \in M
-\end{equation}
+\begin{enumerate}
+    \item \textbf{Minimum nurses per shift:}
+    \begin{equation}
+        \sum_{k=1}^{n} x_{k,s,d} \geq R_{s,d}, \quad \forall s \in [1,S], d \in [1,D]
+    \end{equation}
 
-\begin{equation}
+    \item \textbf{Manager requirement:}
+    \begin{equation}
+        \sum_{N_k \in M} x_{k,s,d} \geq 1, \quad \forall s \in [1,S], d \in [1,D]
+    \end{equation}
+
+    \item \textbf{Shift continuity:}
+    \begin{equation}
     \begin{gathered}
-        (\neg X_{k,s,d} \lor X_{k,s+1,d} \lor \neg X_{k,v,d}), \\
-        \forall k,s,d,v: k \in [1,n], s \in [1,S-1], d \in [1,D], v \in [s+2,S]
+        ( \neg x_{k,s,d} \lor x_{k,s+1,d} \lor \neg x_{k,v,d} ), \\
+        \forall N_k \in N, d \in [1,D], s \in [1,S-1], v \in [s+2,S]
     \end{gathered}
-\end{equation}
+    \end{equation}
 
-\begin{equation}
-    \begin{aligned}
-        \sum_{x_j \in X_{k,d}} x_j &\geq k_{\min}, \quad \forall k \in [1,n], d \in [1,D] \\
-        \sum_{x_j \in X_{k,d}} x_j &\leq k_{\max}, \quad \forall k \in [1,n], d \in [1,D]
-    \end{aligned}
-\end{equation}
+    \item \textbf{Daily workload:}
+    \begin{equation}
+        k_{\min} \leq \sum_{s=1}^{S} x_{k,s,d} \leq k_{\max}, \quad \forall N_k \in N, d \in [1,D]
+    \end{equation}
 
-\begin{equation}
-    \sum_{x_j \in X_k} x_j \leq H_k, \quad \forall k \in [1,n]
-\end{equation}
+    \item \textbf{Total workload:}
+    \begin{equation}
+        \sum_{d=1}^{D} \sum_{s=1}^{S} x_{k,s,d} \leq H_k, \quad \forall N_k \in N
+    \end{equation}
 
-\begin{equation}
-    (\neg X_{k,d,s}), \quad \forall k,d,s: P_{k,s,d} < 0
-\end{equation}
+    \item \textbf{Unavailability:}
+    \begin{equation}
+        (\neg x_{k,s,d}), \quad \forall k,s,d \text{ where } P_{k,s,d} = -1
+    \end{equation}
+\end{enumerate}
 
-\vspace{0.5em}
+\subsubsection{Soft Clauses}
 
-We guarantee an optimal solution will be found by adding the following soft clauses:
-\begin{equation}
-    (\neg X_{k,d,s}) \text{ with weight } P_{k,s,d}, \quad \forall k,s,d: P_{k,s,d} \geq 0
-\end{equation}
+\begin{enumerate}
+    \setcounter{enumi}{6}
+    \item \textbf{Preferences:} To minimize the total cost of the schedule, we add a soft clause for each potential assignment that, if violated (i.e., if the nurse is assigned), adds its cost to the objective function.
+    \begin{equation}
+        (\neg x_{k,s,d}) \text{ with weight } P_{k,s,d}, \quad \forall k,s,d \text{ where } P_{k,s,d} \geq 0
+    \end{equation}
+\end{enumerate}
 
 \section{Algorithm and Configuration}
-With the encoding defined and coded into Python, we fed the formula into the RC2 MaxSAT solver \cite{rc2} available in PySAT, using the CaDiCaL 1.9.5 oracle \cite{cadical} underneath. We chose $cadical195$ simply because it far outperformed every other option we tried. All cardinality constraints use a Modulo Totalizer encoding \cite{mtotalizer}.
+The encoding was implemented in Python, and the resulting formula was provided to the RC2 MaxSAT solver \cite{rc2} available in the PySAT library. The CaDiCaL 1.9.5 solver \cite{cadical} was used as the backend oracle. We chose CaDiCal 1.9.5 simply because it far outperformed every other option we tried. All cardinality constraints were encoded using the Modulo Totalizer encoding \cite{mtotalizer}.
 
 \section{Installing and running}
-To solve this project we used Python. The only dependency used in the project was PySAT which can be installed by running the following command: \verb|pip3 install pysat|. To run the program, simply execute:
+This project was implemented in Python. The sole dependency is PySAT, which can be installed via pip:
 \begin{verbatim}
-python3 project1.py < input.txt > output.txt
+pip3 install pysat
 \end{verbatim}
-Note that \texttt{input.txt} and \texttt{output.txt} should be replaced with your actual file names.
+The program can be executed with the following command:
+\begin{verbatim}
+python3 project1.py < [input.txt] > [output.txt]
+\end{verbatim}
 
 %%
 %% The next two lines define the bibliography style to be used, and
@@ -276,8 +241,6 @@ Note that \texttt{input.txt} and \texttt{output.txt} should be replaced with you
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references.bib}
 
-%%
+\newpage
+
 \end{document}
-\endinput
-%%
-%% End of file `main.tex'.
