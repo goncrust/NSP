@@ -33,7 +33,7 @@
 %% the \doucmentclass[...]{acmart} in this template to 
 %%\documentclass[manuscript,review,anonymous]{acmart}
 %% This version is used for drafting and final submission
-\documentclass[sigconf, 11pt]{acmart}
+\documentclass[sigconf, 10pt]{acmart}
 \settopmatter{printacmref=false}
 
 \usepackage{url}
@@ -223,26 +223,24 @@ The constraints are modeled as a combination of hard and soft clauses. Hard clau
 \end{enumerate}
 
 \section{Algorithm and Configuration}
-The encoding was implemented in Python, and the resulting formula was provided to the RC2 MaxSAT solver \cite{rc2} available in the PySAT library. The CaDiCaL 1.9.5 solver \cite{cadical} was used as the backend oracle. We chose CaDiCal 1.9.5 simply because it far outperformed every other option we tried. All cardinality constraints were encoded using the Modulo Totalizer encoding \cite{mtotalizer}, which requires $O(n^{3/2})$ clauses with $O(n \ log \ n)$ variables. 
+The encoding was implemented in Python, and the resulting formula was provided to the RC2 MaxSAT solver \cite{rc2} available in the PySAT library. The CaDiCaL 1.9.5 solver \cite{cadical} was used as the backend oracle. We chose CaDiCal 1.9.5 simply because it far outperformed every other option we tried. All cardinality constraints were encoded using the Modulo Totalizer encoding \cite{mtotalizer}, which requires $O(n^{3/2})$ clauses with $O(n \cdot log(n))$ variables. 
 
 To know the number of clauses and variables we need we simply sum up all the necessary components from each constraint:
 
 \begin{itemize}
-    \item Initially we create $n.S.D$ variables to represent all the $x_{k,s,d}$ boolean identification variables.
-    \item As constraints $(1)$, $(2)$, $(4)$, $(5)$ and $(6)$ are all cardinality constraints, with $(4)$ including 2 different cardinality constraints using the Modulo Totalizer encoding, we get $6.O(n^{3/2})$ hard clauses and $6.O(n \ log \ n)$ auxiliary variables from these constraints.
-    \item For constraint $(3)$, we add $O(n^4)$ hard clauses: $O(n.D.(S-1).(S-2)) <=> O(n.D.S^2 <=> O(n^4))$.
-    \item For constraint $(6)$ we add $O(n³)$ hard clauses: $O(n.S.D) <=> O(n^3)$.
-    \item For the minimization constraint $(7)$ we add $O(n³)$ soft clauses: $O(n.S.D) <=> O(n^3)$.
+    \item Initially we create $nDS$ variables to represent all the $x_{k,s,d}$ boolean identification variables.
+    \item As constraints $(1)$, $(2)$, $(4)$, and $(5)$ are all cardinality constraints, with $(4)$ including 2 different cardinality constraints using the Modulo Totalizer encoding, we get $5 \cdot O((nDS)^{3/2})$ hard clauses and $5 \cdot O(nDS \cdot \log(nDS))$ auxiliary variables from these constraints.
+    \item For constraint $(3)$, we add $O(nDS \cdot \log(S))$ hard clauses: $O(nD(S-1) \cdot \log(S)) \Leftrightarrow O(nDS \cdot \log(S))$.
+    \item For constraint $(6)$ we add $O(nDS)$ hard clauses.
+    \item For the minimization constraint $(7)$ we add $O(nDS)$ soft clauses.
 \end{itemize}
-
-
 
 In total we create:
 \begin{itemize}
-    \item $O(n^3)$ identification variables: $O(n.S.D) <=> O(n^3)$
-    \item $6.O(n \ log \ n)$ auxiliary variables from 6 cardinality constraints using the Modulo Totalizer encoding.
-    \item $O(n^4)$ hard clauses, from all constraints: $6.O(n^{3/2}) + O(n^4)+2.O(n³) <=> O(n^4)$.
-    \item $O(n^3)$ soft clauses, from the minimization constraint.
+    \item $nDS$ identification variables.
+    \item $O(nDS \cdot \log(nDS))$ auxiliary variables from 5 cardinality constraints using the Modulo Totalizer encoding.
+    \item For the hard clauses, the complexity is: $5 \cdot O((nDS)^{3/2}) + O(nDS \cdot \log(nDS)) + O(nDS)$. The dominant term is typically $O((nDS)^{3/2})$.
+    \item $O(nDS)$ soft clauses, from the minimization constraint.
 \end{itemize}
 
 \section{Installing and running}
