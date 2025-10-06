@@ -180,7 +180,7 @@ def solve(D, S, R, N, P):
             ).clauses
         )
 
-    solver = RC2(formula, solver="cadical153")
+    solver = RC2(formula, solver="cadical195")
     model = solver.compute()
     cost = solver.cost
     print_output(model, cost, vpool, D, S, n)
