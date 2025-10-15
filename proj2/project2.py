@@ -4,9 +4,10 @@
 
 import sys
 from dataclasses import dataclass
+import z3
 from z3 import Solver
 from z3 import Bool, Int, sat, IntVal
-from z3 import Or, And, If, Sum, is_true
+from z3 import Or, And, If, Sum, is_true, AtLeast
 
 
 @dataclass
@@ -80,10 +81,10 @@ def create_variables(N,D,S):
     for i_day in range(D):
         for i_shift in range(S):
             for i_nurse in range(n):
-                name = f'x{i_nurse}{i_day}{i_shift}'
-                variables[i_day][i_shift] += [Bool(name)]
+                var = Bool(f'x{i_nurse}{i_day}{i_shift}')
+                variables[i_day][i_shift] += [var]
                 if (N[i_nurse].is_mngr):
-                    managers[i_day][i_shift] += [Bool(name)]
+                    managers[i_day][i_shift] += [var]
 
     
     return variables, managers
@@ -94,7 +95,8 @@ def create_constraints(solver, variables, managers, D, S, R, N, P):
     # For R{day,shift}, add constraints: SUM(x{day,shift}) >= R{day,shift}
     for i_day in range(D):
         for i_shift in range(S):
-            solver.add(Sum(variables[i_day][i_shift]) >= R[i_day][i_shift])
+            solver.add(AtLeast(*variables[i_day][i_shift], R[i_day][i_shift]))
+            #solver.add(Sum(variables[i_day][i_shift]) >= R[i_day][i_shift])
 
     # ::Contraint 2::
     # For shift s in day d, add constraint: SUM(Mng[i]) >= 1
@@ -122,6 +124,8 @@ def create_constraints(solver, variables, managers, D, S, R, N, P):
 
 if __name__ == "__main__":
     solver = Solver()
+    #z3.set_param()
+
 
     D, S, R, N, P = parse_input()
     variables, managers = create_variables(N,D,S)
