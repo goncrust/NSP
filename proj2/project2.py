@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from z3 import Solver
 from z3 import Bool, Int, sat, IntVal
-from z3 import Or, And, If
+from z3 import Or, And, If, Sum, is_true
 
 
 @dataclass
@@ -57,23 +57,50 @@ def parse_input():
 
     return D, S, R, N, P
 
-def create_variables(n,D,S):
-    variables = [[[] for _ in range(D)] for _ in range(n)]
-    for i_nurse in range(n):
-        for i_day in range(D):
-            for i_shift in range(S):
-                name = f'{i_nurse}{i_day}{i_shift}'
-                variables[i_nurse][i_day] += [Bool(name)]
+def print_output(variables, model, D, S, N):
+    n = len(N)
+    participants = [[[] for _ in range(S)] for _ in range(D)]
+    for d in range(D):
+        for s in range(S):
+            for i_nurse in range(n):
+                var = variables[d][s][i_nurse]
+                val = is_true(model.evaluate(var, model_completion=True))
+                if val:
+                    participants[d][s].append(i_nurse+1)
     
-    return variables
+    for d in range(D):
+        for s in range(S):
+            listToStr = " ".join([str(element) for element in participants[d][s]])
+            print(len(participants[d][s]), listToStr)
 
-def create_constraints(solver, variables, D, S, R, N, P):
+def create_variables(N,D,S):
+    n = len(N)
+    variables = [[[] for _ in range(S)] for _ in range(D)]
+    managers = [[[] for _ in range(S)] for _ in range(D)]
+    for i_day in range(D):
+        for i_shift in range(S):
+            for i_nurse in range(n):
+                name = f'x{i_nurse}{i_day}{i_shift}'
+                variables[i_day][i_shift] += [Bool(name)]
+                if (N[i_nurse].is_mngr):
+                    managers[i_day][i_shift] += [Bool(name)]
+
+    
+    return variables, managers
+
+def create_constraints(solver, variables, managers, D, S, R, N, P):
 
     # ::Constraint 1::
     # For R{day,shift}, add constraints: SUM(x{day,shift}) >= R{day,shift}
+    for i_day in range(D):
+        for i_shift in range(S):
+            solver.add(Sum(variables[i_day][i_shift]) >= R[i_day][i_shift])
 
     # ::Contraint 2::
     # For shift s in day d, add constraint: SUM(Mng[i]) >= 1
+    for i_day in range(D):
+        for i_shift in range(S):
+            solver.add(Or(managers[i_day][i_shift]))
 
     # ::Constraint 3::
     # Nurses can only do continuous shifts, so no 1-0-...-0-1 shift scheme in a day (~xi[s-1] \/ xi[s] \/ xi[s+1])
@@ -97,13 +124,14 @@ if __name__ == "__main__":
     solver = Solver()
 
     D, S, R, N, P = parse_input()
-    variables = create_variables(len(N),D,S)
-    print(variables)
+    variables, managers = create_variables(N,D,S)
+    #print("Vars:", variables)
 
-    solver = create_constraints(solver, variables, D, S, R, N ,P)
+    solver = create_constraints(solver, variables, managers, D, S, R, N ,P)
 
     if solver.check() == sat:
         model = solver.model()
-        print(model)
+        #print(model)
+        print_output(variables, model, D, S, N)
     else:
         print("Unsatisfiable Formula.")
