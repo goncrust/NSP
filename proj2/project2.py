@@ -5,10 +5,10 @@
 import sys
 from dataclasses import dataclass
 import z3
-from z3 import Solver
+from z3 import Solver, Optimize
 from z3 import Bool, Int, sat, IntVal
-from z3 import Or, And, If, Sum, is_true, AtLeast
-
+from z3 import Or, And, If, Sum, is_true, AtLeast, Implies, AtMost, Not
+from z3 import PbEq, PbGe, PbLe
 
 @dataclass
 class Nurse:
@@ -58,7 +58,7 @@ def parse_input():
 
     return D, S, R, N, P
 
-def print_output(variables, model, D, S, N):
+def print_output(variables, model, cost, D, S, N):
     n = len(N)
     participants = [[[] for _ in range(S)] for _ in range(D)]
     for d in range(D):
@@ -69,6 +69,7 @@ def print_output(variables, model, D, S, N):
                 if val:
                     participants[d][s].append(i_nurse+1)
     
+    print(cost)
     for d in range(D):
         for s in range(S):
             listToStr = " ".join([str(element) for element in participants[d][s]])
@@ -83,59 +84,105 @@ def create_variables(N,D,S):
             for i_nurse in range(n):
                 var = Bool(f'x{i_nurse}{i_day}{i_shift}')
                 variables[i_day][i_shift] += [var]
+
                 if (N[i_nurse].is_mngr):
                     managers[i_day][i_shift] += [var]
 
-    
     return variables, managers
 
-def create_constraints(solver, variables, managers, D, S, R, N, P):
+def create_constraints(solver: Optimize, variables, managers, D, S, R, N, P):
+    n = len(N)
 
     # ::Constraint 1::
     # For R{day,shift}, add constraints: SUM(x{day,shift}) >= R{day,shift}
     for i_day in range(D):
         for i_shift in range(S):
-            solver.add(AtLeast(*variables[i_day][i_shift], R[i_day][i_shift]))
-            #solver.add(Sum(variables[i_day][i_shift]) >= R[i_day][i_shift])
+            xs = variables[i_day][i_shift]
+            lits = []
+            for x in xs:
+                lits.append((x, 1))
+
+            solver.add(PbGe(lits, R[i_day][i_shift]))
 
     # ::Contraint 2::
     # For shift s in day d, add constraint: SUM(Mng[i]) >= 1
     for i_day in range(D):
         for i_shift in range(S):
-            solver.add(Or(managers[i_day][i_shift]))
+            solver.add(AtLeast(*managers[i_day][i_shift], 1))
 
     # ::Constraint 3::
-    # Nurses can only do continuous shifts, so no 1-0-...-0-1 shift scheme in a day (~xi[s-1] \/ xi[s] \/ xi[s+1])
+    # Nurses can only do continuous shifts, if nurse has done a shift in a day and she's not assigned to the next one,
+    #  set variable "can_be_assigned_this_day" to false
+    for d in range(D):
+        for s in range(S):
+            for i_nurse in range(n):
+                if s != S-1 and N[i_nurse].l_max > 1:
+                    for later in range(s+2, S):
+                        solver.add(Or(
+                            variables[d][s][i_nurse] == False,
+                            variables[d][s+1][i_nurse] == True,
+                            variables[d][later][i_nurse] == False
+                        ))
 
     # ::Constraint 4::
     # For Nurse N, for day d, SUM(x[i]) >= Lmin && SUM(x[i]) <= Lmax
+    for i_day in range(D):
+        for i_nurse in range(n):
+            xs = [variables[i_day][s][i_nurse] for s in range(S)]
+            lits = []
+            for x in xs:
+                lits.append((x, 1))
+            solver.add(PbGe((lits), N[i_nurse].l_min))
+            solver.add(PbLe((lits), N[i_nurse].l_max))
 
     # ::Constraint 5::
     # For Nurse N, SUM(x[i]) <= H(N)
+    for i_nurse in range(n):
+        xs = [variables[d][s][i_nurse] for d in range(D) for s in range(S)]
+        lits = []
+        for x in xs:
+            lits.append((x, 1))
+        solver.add(PbLe((lits), N[i_nurse].h))
 
-    # ::Constraint 6::
-    # If P{i_nurse,i_shift,i_day} < 0, Nurse is unavailable in this shift in this day
+    terms = []
+    for d in range(D):
+        for s in range(S):
+            for i_nurse in range(n):
+                # ::Constraint 6::
+                # If P{i_nurse,i_shift,i_day} < 0, Nurse is unavailable in this shift in this day
+                if (P[d][s][i_nurse]) < 0:
+                    solver.add(variables[d][s][i_nurse] == False)
+                else:
+                    terms.append(If(variables[d][s][i_nurse], IntVal(P[d][s][i_nurse]), IntVal(0)))
 
     # ::Constraint 7::
     # Minimize cost of assignment
-
-    return solver
-
+    opt_cost = solver.minimize(Sum(terms))
+    return solver, opt_cost
 
 if __name__ == "__main__":
-    solver = Solver()
-    #z3.set_param()
-
+    z3.set_param('sat.core.minimize_partial', True)
+    z3.set_param('sat.smt', True)
+    z3.set_param('sat.cardinality.solver', True)
+    z3.set_param('sat.pb.solver', 'sorting')
+    z3.set_param('parallel.enable', True)
+    z3.set_param('sat.threads', 4)
+    z3.set_param('sat.lookahead_simplify', True)
+    z3.set_param('auto_config', False)
+    z3.set_param('smt.induction', True)
+    z3.set_param('sat.phase', 'caching')
+    z3.set_param('opt.enable_sat', True)
+    z3.set_param('sat.bce', True)
 
     D, S, R, N, P = parse_input()
     variables, managers = create_variables(N,D,S)
-    #print("Vars:", variables)
 
-    solver = create_constraints(solver, variables, managers, D, S, R, N ,P)
+    solver = Optimize()
+    solver.set(priority='pareto')
+    solver, cost = create_constraints(solver, variables, managers, D, S, R, N ,P)
 
     if solver.check() == sat:
         model = solver.model()
-        #print(model)
-        print_output(variables, model, D, S, N)
+        print_output(variables, model, cost.value(), D, S, N)
     else:
-        print("Unsatisfiable Formula.")
+        print("UNSAT.")
