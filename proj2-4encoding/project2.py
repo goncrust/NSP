@@ -150,18 +150,6 @@ def create_constraints(solver: Optimize, D, S, R, N, P):
 
 
 if __name__ == "__main__":
-    z3.set_param("sat.core.minimize_partial", True)
-    z3.set_param("sat.smt", True)
-    z3.set_param("sat.cardinality.solver", True)
-    z3.set_param("sat.pb.solver", "sorting")
-    z3.set_param("parallel.enable", True)
-    z3.set_param("sat.threads", 4)
-    z3.set_param("sat.lookahead_simplify", True)
-    z3.set_param("auto_config", False)
-    z3.set_param("smt.induction", True)
-    z3.set_param("sat.phase", "caching")
-    z3.set_param("opt.enable_sat", True)
-    z3.set_param("sat.bce", True)
     z3.set_param("parallel.enable", True)
 
     D, S, R, N, P = parse_input()
