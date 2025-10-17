@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VENV_PYTHON="$HOME/Documents/dev/venvs/nsp/bin/python"
+
 timeoutInSeconds=1800
 
 if [[ ! -f nsp-checker ]]; then
@@ -16,7 +18,7 @@ do
     outfile=public-tests/"$fbase.myout"
     checkfile=public-tests/"$fbase.check"
     echo "Executing on instance $f"
-    time timeout $timeoutInSeconds"s" ./project1.py < "$f" > "$outfile"
+    time timeout $timeoutInSeconds"s" "$VENV_PYTHON" ./project1.py < "$f" > "$outfile"
     ./nsp-checker "$f" "$outfile" > "$checkfile"
     cat "$checkfile"
     echo
