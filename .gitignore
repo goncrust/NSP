@@ -25,3 +25,5 @@ nsp-checker
 *.fls
 *.synctex.gz
 .auctex-auto/
+
+!*/public-tests/*.out
