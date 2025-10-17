@@ -103,8 +103,7 @@ def create_constraints(solver: Optimize, variables, managers, D, S, R, N, P):
     # For R{day,shift}, add constraints: SUM(x{day,shift}) >= R{day,shift}
     for i_day in range(D):
         for i_shift in range(S):
-            lits = [x for x in variables[i_day][i_shift]]
-            solver.add(AtLeast(*lits, R[i_day][i_shift]))
+            solver.add(AtLeast(*variables[i_day][i_shift], R[i_day][i_shift]))
 
     # ::Contraint 2::
     # For shift s in day d, add constraint: SUM(Mng[i]) >= 1
@@ -132,14 +131,14 @@ def create_constraints(solver: Optimize, variables, managers, D, S, R, N, P):
     # For Nurse N, for day d, SUM(x[i]) >= Lmin && SUM(x[i]) <= Lmax
     for i_day in range(D):
         for i_nurse in range(n):
-            lits = [x for s in range(S) for x in variables[i_day][s][i_nurse]]
+            lits = [variables[i_day][s][i_nurse] for s in range(S)]
             solver.add(AtLeast(*lits, N[i_nurse].l_min))
             solver.add(AtMost(*lits, N[i_nurse].l_max))
 
     # ::Constraint 5::
     # For Nurse N, SUM(x[i]) <= H(N)
     for i_nurse in range(n):
-        lits = [x for d in range(D) for s in range(S) for x in variables[d][s][i_nurse]]
+        lits = [variables[d][s][i_nurse] for d in range(D) for s in range(S)]
         solver.add(AtMost(*lits, N[i_nurse].h))
 
     terms = []
