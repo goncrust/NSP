@@ -59,7 +59,7 @@
 \acmDOI{}
 \acmISBN{}
 \setcopyright{none}
-\acmConference[ACL]{}{Algorithms for Computational Logic}{04-10-2025}
+\acmConference[ACL]{}{Algorithms for Computational Logic}{19-10-2025}
 
 \makeatletter
 \patchcmd{\maketitle}{\@copyrightyear.}{}{}{}
@@ -157,7 +157,8 @@ The Nurse Scheduling Problem (NSP) involves creating an optimal shift schedule f
 \end{enumerate}
 
 \section{Description of the Encoding}
-This problem can be modeled and solved using Maximum Satisfiability (MaxSAT). We first define a set of variables to represent the schedule and then encode the problem's constraints as clauses. This encoding is then passed to a MaxSAT solver to find an optimal solution.
+
+We first define a set of variables to represent the schedule and then encode the problem's constraints as clauses.
 
 \subsection{Definition of Variables}
 \begin{itemize}
@@ -169,13 +170,80 @@ This problem can be modeled and solved using Maximum Satisfiability (MaxSAT). We
     \item Let $k_{\min}$ and $k_{\max}$ be the minimum and maximum number of shifts for nurse $N_k$ ($1 \le k \le n$) in any given day.
     \item Let $H_k$ be the maximum total number of shifts that can be assigned to nurse $N_k$ over the entire period.
     \item Let $P_{k,s,d}$ be the cost of assigning nurse $N_k$ to shift $s$ on day $d$. If $P_{k,s,d} = -1$, nurse $N_k$ is not available for that shift. All other costs are positive integers representing preferences (a lower cost is better).
-    \item Let $x_{k,s,d}$ be a Boolean variable such that $x_{k,s,d} = 1$ if nurse $N_k$ is assigned to shift $s$ on day $d$, and $x_{k,s,d} = 0$ otherwise.
 \end{itemize}
 
 \subsection{Modeling Constraints}
-The constraints are modeled as a combination of hard and soft clauses. Hard clauses must be satisfied, while soft clauses represent preferences that the solver will try to satisfy by minimizing the total weight of the unsatisfied clauses.
 
-\subsubsection{Hard Clauses}
+This problem can be modeled and solved using SMT. 
+
+We define a set of integer variables that describe the schedule more abstractly than using boolean assignments. For each nurse $k \in \{1, \dots, n\}$ and each day $d \in \{0, \dots, D-1\}$, we define two core integer variables:
+\begin{itemize}
+    \item $\mathbf{start_{k,d}}$: The 0-indexed starting shift for nurse $k$ on day $d$.
+    \item $\mathbf{num_{k,d}}$: The total number of consecutive shifts nurse $k$ works on day $d$.
+\end{itemize}
+
+To simplify the main constraints, we first define a helper predicate, $Works(k, d, s)$, which is true if nurse $k$ is working on shift $s$ of day $d$. The shift index $s$ is 0-indexed, $s \in \{0, \dots, S-1\}$.
+\begin{equation}
+    Works(k, d, s) \equiv (start_{k,d} \le s) \land (s < start_{k,d} + num_{k,d})
+\end{equation}
+
+The constraints are then defined as follows, using an indicator function $\mathbb{I}(\cdot)$ which is 1 if its argument is true and 0 otherwise. This corresponds to the \textit{If(condition, 1, 0)} construct in the code.
+
+\begin{enumerate}
+    \item \textbf{Domain Constraints:} The variables must stay within physically possible bounds. For all $k \in \{1, \dots, n\}$ and $d \in \{0, \dots, D-1\}$:
+    \begin{gather}
+        0 \le start_{k,d} < S \\
+        0 \le num_{k,d} \le S \\
+        start_{k,d} + num_{k,d} \le S
+    \end{gather}
+
+    \item \textbf{Minimum Nurses per Shift:}
+    \begin{equation}
+    \begin{gathered}
+        \sum_{k=1}^{n} \mathbb{I}(Works(k, d, s)) \ge R_{s,d}, \\
+        \forall d \in \{0, \dots, D-1\}, s \in \{0, \dots, S-1\}
+    \end{gathered}
+    \end{equation}
+
+    \item \textbf{Manager Requirement:}
+    \begin{equation}
+    \begin{gathered}
+        \sum_{k \in M} \mathbb{I}(Works(k, d, s)) \ge 1, \\
+        \forall d \in \{0, \dots, D-1\}, s \in \{0, \dots, S-1\}
+    \end{gathered}
+    \end{equation}
+
+    \item \textbf{Shift Continuity:} This constraint is satisfied implicitly by the variable encoding. By defining a nurse's daily work as a single block of $num_{k,d}$ shifts starting at $start_{k,d}$, gaps within a work period are impossible. Therefore, no separate constraint is needed to enforce this rule.
+
+    \item \textbf{Daily Workload:}
+    \begin{equation}
+    \begin{gathered}
+        (L_{k}^{min} \le num_{k,d} \le L_{k}^{max}), \\
+        \forall k \in \{1, \dots, n\}, d \in \{0, \dots, D-1\}
+    \end{gathered}
+    \end{equation}
+
+    \item \textbf{Total Workload:}
+    \begin{equation}
+        \sum_{d=0}^{D-1} num_{k,d} \le H_k, \quad \forall k \in \{1, \dots, n\}
+    \end{equation}
+
+    \item \textbf{Unavailability:}
+    \begin{equation}
+        \neg Works(k, d, s), \quad \forall k, d, s \text { where } P_{k,s,d} = -1
+    \end{equation}
+
+    \item \textbf{Objective Function:}
+    \begin{equation}
+        \text{minimize } \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} \sum_{k=1, P_{k,s,d} \ge 0}^{n} \mathbb{I}(Works(k, d, s)) \cdot P_{k,s,d}
+    \end{equation}
+\end{enumerate}
+
+\section{Alternative Encodings}
+
+\subsection{Boolean Encoding}
+
+Let $x_{k,s,d}$ be a Boolean variable such that $x_{k,s,d} = 1$ if nurse $N_k$ is assigned to shift $s$ on day $d$, and $x_{k,s,d} = 0$ otherwise.
 
 \begin{enumerate}
     \item \textbf{Minimum nurses per shift:}
@@ -210,47 +278,57 @@ The constraints are modeled as a combination of hard and soft clauses. Hard clau
     \begin{equation}
         (\neg x_{k,s,d}), \quad \forall k,s,d \text{ where } P_{k,s,d} = -1
     \end{equation}
-\end{enumerate}
 
-\subsubsection{Soft Clauses}
-
-\begin{enumerate}
-    \setcounter{enumi}{6}
-    \item \textbf{Preferences:} To minimize the total cost of the schedule, we add a soft clause for each potential assignment that, if violated (i.e., if the nurse is assigned), adds its cost to the objective function.
+    \item \textbf{Objective Function:}
     \begin{equation}
-        (\neg x_{k,s,d}) \text{ with weight } P_{k,s,d}, \quad \forall k,s,d \text{ where } P_{k,s,d} \geq 0
+        \text{minimize } \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} \sum_{k=1, P_{k,s,d} \ge 0}^{n} x_{k,d,s} \cdot P_{k,s,d}
     \end{equation}
 \end{enumerate}
 
+\subsection{Hybrid Encoding}
+
+The hybrid encoding seeks to combine the strengths of both the pure boolean and pure integer models. It uses integer variables to elegantly handle structural constraints like shift continuity and workload totals, while also using boolean variables to allow for fast, simple checks on a per-shift basis.
+
+This model defines three sets of variables for each nurse $k$, day $d$, and shift $s$:
+\begin{itemize}
+    \item A boolean variable $x_{k,d,s}$, which is true if nurse $k$ is assigned to shift $s$ on day $d$.
+    \item An integer variable $start_{k,d}$ for the starting shift of nurse $k$ on day $d$.
+    \item An integer variable $num_{k,d}$ for the number of consecutive shifts worked by nurse $k$ on day $d$.
+\end{itemize}
+
+The core of this model is a "bridge" constraint that links the boolean and integer variables, ensuring they are consistent. For all $k, d, s$:
+\begin{equation}
+    x_{k,d,s} \iff (start_{k,d} \le s) \land (s < start_{k,d} + num_{k,d})
+\end{equation}
+
+With this bridge in place, we can formulate each constraint using the most efficient variable type for the task:
+
+\begin{enumerate}
+    \item \textbf{Per-Shift Constraints:} The requirements for \textbf{minimum nurses per shift}, \textbf{managers requirement}, and \textbf{unavailability} are best expressed using the simple boolean variables. These constraints are identical to the pure boolean encoding.
+    
+    \item \textbf{Structural Constraints:} The rules for \textbf{daily workload} and \textbf{total workload} are handled by the more expressive integer variables. These constraints are identical to the first encoding. For \textbf{shift continuity}, it is satisfied by the bridge constraint linking $x_{k,d,s}$ to the single, continuous block defined by $start_{k,d}$ and $num_{k,d}$.
+    
+    \item \textbf{Objective Function:} The cost function is also defined using the simple boolean variables, summing the preferences for all assigned shifts.
+    \begin{equation}
+        \text{minimize } \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} \sum_{k=1, P_{k,s,d} \ge 0}^{n} x_{k,d,s} \cdot P_{k,s,d}
+    \end{equation}
+\end{enumerate}
+
+\section{Performance Comparison}
+
+TODO
+
 \section{Algorithm and Configuration}
-The encoding was implemented in Python, and the resulting formula was provided to the RC2 MaxSAT solver \cite{rc2} available in the PySAT library. The CaDiCaL 1.9.5 solver \cite{cadical} was used as the backend oracle. We chose CaDiCal 1.9.5 simply because it far outperformed every other option we tried. All cardinality constraints were encoded using the Modulo Totalizer encoding \cite{mtotalizer}, which requires $O(n^{3/2})$ clauses with $O(n \cdot log(n))$ variables. 
-
-To know the number of clauses and variables we need we simply sum up all the necessary components from each constraint:
-
-\begin{itemize}
-    \item Initially we create $nDS$ variables to represent all the $x_{k,s,d}$ boolean identification variables.
-    \item As constraints $(1)$, $(2)$, $(4)$, and $(5)$ are all cardinality constraints, with $(4)$ including 2 different cardinality constraints using the Modulo Totalizer encoding, we get $5 \cdot O((nDS)^{3/2})$ hard clauses and $5 \cdot O(nDS \cdot \log(nDS))$ auxiliary variables from these constraints.
-    \item For constraint $(3)$, we add $O(nDS \cdot \log(S))$ hard clauses: $O(nD(S-1) \cdot \log(S)) \Leftrightarrow O(nDS \cdot \log(S))$.
-    \item For constraint $(6)$ we add $O(nDS)$ hard clauses.
-    \item For the minimization constraint $(7)$ we add $O(nDS)$ soft clauses.
-\end{itemize}
-
-In total we create:
-\begin{itemize}
-    \item $nDS$ identification variables.
-    \item $O(nDS \cdot \log(nDS))$ auxiliary variables from 5 cardinality constraints using the Modulo Totalizer encoding.
-    \item For the hard clauses, the complexity is: $5 \cdot O((nDS)^{3/2}) + O(nDS \cdot \log(nDS)) + O(nDS)$. The dominant term is typically $O((nDS)^{3/2})$.
-    \item $O(nDS)$ soft clauses, from the minimization constraint.
-\end{itemize}
+The encoding was implemented in Python, and the resulting formula was provided to Microsoft's Z3 SMT Solver \cite{z3}, accessed via the \texttt{z3-solver} library. The \texttt{Optimize} class is used to handle the problem, as it is designed to find a model that not only satisfies all the hard constraints but also minimizes an objective function, which in this case is the total assignment cost. We set the solver strategy to use a Pareto approach (via \texttt{solver.set(priority='pareto')}) since we empirically observe that it provides a significant improvement in solving time compared to the default.
 
 \section{Installing and running}
-This project was implemented in Python. The sole dependency is PySAT, which can be installed via pip:
+This project was implemented in Python. The sole dependency is z3-python, which can be installed via pip:
 \begin{verbatim}
-pip3 install pysat
+pip3 install z3-python
 \end{verbatim}
 The program can be executed with the following command:
 \begin{verbatim}
-python3 project1.py < [input.txt] > [output.txt]
+python3 project2.py < [input.txt] > [output.txt]
 \end{verbatim}
 
 %%

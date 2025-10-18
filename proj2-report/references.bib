@@ -1,46 +1,15 @@
-@article{rc2,
-  author   = {Alexey Ignatiev and Antonio Morgado and Joao Marques-Silva},
-  title    = {RC2: an Efficient MaxSAT Solver},
-  journal  = {Journal on Satisfiability, Boolean Modelling and Computation},
-  volume   = {11},
-  number   = {1},
-  pages    = {53-64},
-  year     = {2019},
-  doi      = {10.3233/SAT190116},
-  url      = { 
-              https://journals.sagepub.com/doi/abs/10.3233/SAT190116
-              },
-  abstract = { Recent work proposed a toolkit PySAT aiming at fast and easy prototyping with propositional satisfiability (SAT) oracles in Python, which enabled one to exploit the power of the original implementations of the state-of-the-art SAT solvers in Python. Maximum satisfiability (MaxSAT) is a well-known optimization version of SAT, which can be solved with a series of calls to a SAT oracle. Based on this fact and motivated by the ideas underlying the PySAT toolkit, this paper describes and evaluates RC2 (stands for relaxable cardinality constraints), a new core-guided MaxSAT solver written in Python, which won both unweighted and weighted categories of the main track of MaxSAT Evaluation 2018. }
+@InProceedings{z3,
+author="de Moura, Leonardo
+and Bj{\o}rner, Nikolaj",
+editor="Ramakrishnan, C. R.
+and Rehof, Jakob",
+title="Z3: An Efficient SMT Solver",
+booktitle="Tools and Algorithms for the Construction and Analysis of Systems",
+year="2008",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="337--340",
+abstract="Satisfiability Modulo Theories (SMT) problem is a decision problem for logical first order formulas with respect to combinations of background theories such as: arithmetic, bit-vectors, arrays, and uninterpreted functions. Z3 is a new and efficient SMT Solver freely available from Microsoft Research. It is used in various software verification and analysis applications.",
+isbn="978-3-540-78800-3"
 }
 
-@inproceedings{cadical,
-  author    = {Armin Biere and
-               Tobias Faller and
-               Katalin Fazekas and
-               Mathias Fleury and
-               Nils Froleyks and
-               Florian Pollitt},
-  editor    = {Arie Gurfinkel and
-               Vijay Ganesh},
-  title     = {{CaDiCaL 2.0}},
-  booktitle = {Computer Aided Verification - 36th International Conference, {CAV}
-               2024, Montreal, QC, Canada, July 24-27, 2024, Proceedings, Part {I}},
-  series    = {Lecture Notes in Computer Science},
-  volume    = {14681},
-  pages     = {133--152},
-  publisher = {Springer},
-  year      = {2024},
-  doi       = {10.1007/978-3-031-65627-9\_7}
-}
-
-@inproceedings{mtotalizer,
-  author    = {Ogawa, Toru and Liu, Yangyang and Hasegawa, Ryuzo and Koshimura, Miyuki and Fujita, Hiroshi},
-  booktitle = {2013 IEEE 25th International Conference on Tools with Artificial Intelligence},
-  title     = {Modulo Based CNF Encoding of Cardinality Constraints and Its Application to MaxSAT Solvers},
-  year      = {2013},
-  volume    = {},
-  number    = {},
-  pages     = {9-17},
-  keywords  = {Sorting;Encoding;Adders;Merging;Educational institutions;Electrical engineering;Delays;CNF Encoding;Modulo Calculation;MaxSAT;Cardinality Constraints;K-Cardinality},
-  doi       = {10.1109/ICTAI.2013.13}
-}
