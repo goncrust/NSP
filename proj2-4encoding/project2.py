@@ -150,8 +150,6 @@ def create_constraints(solver: Optimize, D, S, R, N, P):
 
 
 if __name__ == "__main__":
-    z3.set_param("parallel.enable", True)
-
     D, S, R, N, P = parse_input()
 
     solver = Optimize()

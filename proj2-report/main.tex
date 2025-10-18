@@ -1,0 +1,264 @@
+%%
+%% This is file `main.tex' based on `sample-sigconf.tex' (q.v. for spurce of that,
+%%
+%% IMPORTANT NOTICE:
+%% 
+%% For the copyright see the original source file `sample-sigconf.tex'
+%% in the `Sample' folder.
+%%
+%% For distribution of the original source see the terms
+%% for copying and modification in the file samples.dtx.
+%% 
+%% This generated file may be distributed as long as the
+%% original source files, as listed above, are part of the
+%% same distribution. (The sources need not necessarily be
+%% in the same archive or directory.)
+%%
+%% Commands for TeXCount
+%TC:macro \cite [option:text,text]
+%TC:macro \citep [option:text,text]
+%TC:macro \citet [option:text,text]
+%TC:envir table 0 1
+%TC:envir table* 0 1
+%TC:envir tabular [ignore] word
+%TC:envir displaymath 0 word
+%TC:envir math 0 word
+%TC:envir comment 0 0
+%%
+%%
+%% The first command in your LaTeX source must be the \documentclass command.
+
+%% NOTE that a single column version is required for 
+%% submission and peer review. This can be done by changing
+%% the \doucmentclass[...]{acmart} in this template to 
+%%\documentclass[manuscript,review,anonymous]{acmart}
+%% This version is used for drafting and final submission
+\documentclass[sigconf, 10pt]{acmart}
+\settopmatter{printacmref=false}
+
+\usepackage{url}
+
+
+%% 
+%% To ensure 100% compatibility, please check the white list of
+%% approved LaTeX packages to be used with the Master Article Template at
+%% https://www.acm.org/publications/taps/whitelist-of-latex-packages 
+%% before creating your document. The white list page provides 
+%% information on how to submit additional LaTeX packages for 
+%% review and adoption.
+%% Fonts used in the template cannot be substituted; margin 
+%% adjustments are not allowed.
+
+%%
+%% \BibTeX command to typeset BibTeX logo in the docs
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
+
+%% The following are not a requirement, delete if not using
+\acmDOI{}
+\acmISBN{}
+\setcopyright{none}
+\acmConference[ACL]{}{Algorithms for Computational Logic}{04-10-2025}
+
+\makeatletter
+\patchcmd{\maketitle}{\@copyrightyear.}{}{}{}
+\makeatother
+
+%%
+%% Submission ID.
+%% Use this when submitting an article to a sponsored event. You'll
+%% receive a unique submission ID from the organizers
+%% of the event, and this ID should be used as the parameter to this command.
+%%\acmSubmissionID{123-A56-BU3}
+
+%%
+%% For managing citations, it is recommended to use bibliography
+%% files in BibTeX format.
+%%
+%% You can then either use BibTeX with the ACM-Reference-Format style,
+%% or BibLaTeX with the acmnumeric or acmauthoryear sytles, that include
+%% support for advanced citation of software artefact from the
+%% biblatex-software package, also separately available on CTAN.
+%%
+%% Look at the sample-*-biblatex.tex files for templates showcasing
+%% the biblatex styles.
+%%
+
+%%
+%% The majority of ACM publications use numbered citations and
+%% references.  The command \citestyle{authoryear} switches to the
+%% "author year" style.
+%%
+%% If you are preparing content for an event
+%% sponsored by ACM SIGGRAPH, you must use the "author year" style of
+%% citations and references.
+%% Uncommenting
+%% the next command will enable that style.
+%%\citestyle{acmauthoryear}
+
+%%
+%% end of the preamble, start of the body of the document source.
+
+%% % Location of your graphics files for figures, here a sub-folder to the main project folder
+\graphicspath{{./images/}} 
+
+
+\begin{document}
+
+%%
+%% The "title" command has an optional parameter,
+%% allowing the author to define a "short title" to be used in page headers.
+\title{The Nurse Scheduling Problem}
+
+%%
+%% The "author" command and its associated commands are used to define
+%% the authors and their affiliations.
+%% Of note is the shared affiliation of the first two authors, and the
+%% "authornote" and "authornotemark" commands
+%% used to denote shared contribution to the research.
+\author{Francisco Fonseca, 102492}
+\authornote{Both authors contributed equally to this work.}
+\email{franciscodiasfonseca@tecnico.ulisboa.pt}
+\author{Gonçalo Rua, 102604}
+\authornotemark[1]
+\email{goncalonrua@tecnico.ulisboa.pt}
+\affiliation{%
+  \institution{Instituto Superior Técnico}
+  \streetaddress{Av. Rovisco Pais}
+  \city{Lisbon}
+  \country{Portugal}
+}
+
+%%
+%% By default, the full list of authors will be used in the page
+%% headers. Often, this list is too long, and will overlap
+%% other information printed in the page headers. This command allows
+%% the author to define a more concise list
+%% of authors' names for this purpose.
+\renewcommand{\shortauthors}{Francisco Fonseca, Gonçalo Rua}
+
+%%
+%% This command processes the author and affiliation and title
+%% information and builds the first part of the formatted document.
+\maketitle
+
+\section{Description of the Problem}
+The Nurse Scheduling Problem (NSP) involves creating an optimal shift schedule for nurses working in a hospital over a given period of days, subject to some constraints:
+
+\begin{enumerate}
+    \item Each shift requires a minimum number of nurses for the normal functioning of the hospital.
+    \item Each shift must have at least one nurse with managerial qualifications.
+    \item A nurse's assigned shifts on any given day must be continuous, with no gaps in between.
+    \item Each nurse has a minimum and maximum daily workload, defined by the number of assigned shifts.
+    \item The total number of shifts that can be assigned to a nurse for the entire period is limited.
+    \item A nurse cannot be assigned to shifts when it's known they're unavailable to work.
+    \item The schedule must consider nurses' shift preferences. An optimal solution aims to minimize the total cost associated with the assignments.
+\end{enumerate}
+
+\section{Description of the Encoding}
+This problem can be modeled and solved using Maximum Satisfiability (MaxSAT). We first define a set of variables to represent the schedule and then encode the problem's constraints as clauses. This encoding is then passed to a MaxSAT solver to find an optimal solution.
+
+\subsection{Definition of Variables}
+\begin{itemize}
+    \item Let $D$ be a positive integer representing the number of days in the scheduling period.
+    \item Let $S$ be a positive integer representing the number of shifts per day, all with the same duration, that cover the full 24 hours. For example, if $S = 4$, each shift will have 6 hours.
+    \item Let $R_{s,d}$ be the minimum number of nurses required for shift $s$ ($1 \le s \le S$) on day $d$ ($1 \le d \le D$).
+    \item Let $N = \{N_1, N_2, \dots, N_n\}$ be the set of $n$ available nurses.
+    \item Let $M \subseteq N$ be the subset of nurses with managerial qualifications.
+    \item Let $k_{\min}$ and $k_{\max}$ be the minimum and maximum number of shifts for nurse $N_k$ ($1 \le k \le n$) in any given day.
+    \item Let $H_k$ be the maximum total number of shifts that can be assigned to nurse $N_k$ over the entire period.
+    \item Let $P_{k,s,d}$ be the cost of assigning nurse $N_k$ to shift $s$ on day $d$. If $P_{k,s,d} = -1$, nurse $N_k$ is not available for that shift. All other costs are positive integers representing preferences (a lower cost is better).
+    \item Let $x_{k,s,d}$ be a Boolean variable such that $x_{k,s,d} = 1$ if nurse $N_k$ is assigned to shift $s$ on day $d$, and $x_{k,s,d} = 0$ otherwise.
+\end{itemize}
+
+\subsection{Modeling Constraints}
+The constraints are modeled as a combination of hard and soft clauses. Hard clauses must be satisfied, while soft clauses represent preferences that the solver will try to satisfy by minimizing the total weight of the unsatisfied clauses.
+
+\subsubsection{Hard Clauses}
+
+\begin{enumerate}
+    \item \textbf{Minimum nurses per shift:}
+    \begin{equation}
+        \sum_{k=1}^{n} x_{k,s,d} \geq R_{s,d}, \quad \forall s \in [1,S], d \in [1,D]
+    \end{equation}
+
+    \item \textbf{Manager requirement:}
+    \begin{equation}
+        \sum_{N_k \in M} x_{k,s,d} \geq 1, \quad \forall s \in [1,S], d \in [1,D]
+    \end{equation}
+
+    \item \textbf{Shift continuity:}
+    \begin{equation}
+    \begin{gathered}
+        ( \neg x_{k,s,d} \lor x_{k,s+1,d} \lor \neg x_{k,v,d} ), \\
+        \forall N_k \in N, d \in [1,D], s \in [1,S-1], v \in [s+2,S]
+    \end{gathered}
+    \end{equation}
+
+    \item \textbf{Daily workload:}
+    \begin{equation}
+        k_{\min} \leq \sum_{s=1}^{S} x_{k,s,d} \leq k_{\max}, \quad \forall N_k \in N, d \in [1,D]
+    \end{equation}
+
+    \item \textbf{Total workload:}
+    \begin{equation}
+        \sum_{d=1}^{D} \sum_{s=1}^{S} x_{k,s,d} \leq H_k, \quad \forall N_k \in N
+    \end{equation}
+
+    \item \textbf{Unavailability:}
+    \begin{equation}
+        (\neg x_{k,s,d}), \quad \forall k,s,d \text{ where } P_{k,s,d} = -1
+    \end{equation}
+\end{enumerate}
+
+\subsubsection{Soft Clauses}
+
+\begin{enumerate}
+    \setcounter{enumi}{6}
+    \item \textbf{Preferences:} To minimize the total cost of the schedule, we add a soft clause for each potential assignment that, if violated (i.e., if the nurse is assigned), adds its cost to the objective function.
+    \begin{equation}
+        (\neg x_{k,s,d}) \text{ with weight } P_{k,s,d}, \quad \forall k,s,d \text{ where } P_{k,s,d} \geq 0
+    \end{equation}
+\end{enumerate}
+
+\section{Algorithm and Configuration}
+The encoding was implemented in Python, and the resulting formula was provided to the RC2 MaxSAT solver \cite{rc2} available in the PySAT library. The CaDiCaL 1.9.5 solver \cite{cadical} was used as the backend oracle. We chose CaDiCal 1.9.5 simply because it far outperformed every other option we tried. All cardinality constraints were encoded using the Modulo Totalizer encoding \cite{mtotalizer}, which requires $O(n^{3/2})$ clauses with $O(n \cdot log(n))$ variables. 
+
+To know the number of clauses and variables we need we simply sum up all the necessary components from each constraint:
+
+\begin{itemize}
+    \item Initially we create $nDS$ variables to represent all the $x_{k,s,d}$ boolean identification variables.
+    \item As constraints $(1)$, $(2)$, $(4)$, and $(5)$ are all cardinality constraints, with $(4)$ including 2 different cardinality constraints using the Modulo Totalizer encoding, we get $5 \cdot O((nDS)^{3/2})$ hard clauses and $5 \cdot O(nDS \cdot \log(nDS))$ auxiliary variables from these constraints.
+    \item For constraint $(3)$, we add $O(nDS \cdot \log(S))$ hard clauses: $O(nD(S-1) \cdot \log(S)) \Leftrightarrow O(nDS \cdot \log(S))$.
+    \item For constraint $(6)$ we add $O(nDS)$ hard clauses.
+    \item For the minimization constraint $(7)$ we add $O(nDS)$ soft clauses.
+\end{itemize}
+
+In total we create:
+\begin{itemize}
+    \item $nDS$ identification variables.
+    \item $O(nDS \cdot \log(nDS))$ auxiliary variables from 5 cardinality constraints using the Modulo Totalizer encoding.
+    \item For the hard clauses, the complexity is: $5 \cdot O((nDS)^{3/2}) + O(nDS \cdot \log(nDS)) + O(nDS)$. The dominant term is typically $O((nDS)^{3/2})$.
+    \item $O(nDS)$ soft clauses, from the minimization constraint.
+\end{itemize}
+
+\section{Installing and running}
+This project was implemented in Python. The sole dependency is PySAT, which can be installed via pip:
+\begin{verbatim}
+pip3 install pysat
+\end{verbatim}
+The program can be executed with the following command:
+\begin{verbatim}
+python3 project1.py < [input.txt] > [output.txt]
+\end{verbatim}
+
+%%
+%% The next two lines define the bibliography style to be used, and
+%% the bibliography file.
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references.bib}
+
+\newpage
+
+\end{document}
