@@ -35,7 +35,6 @@
 %% This version is used for drafting and final submission
 \documentclass[sigconf, 10pt]{acmart}
 \settopmatter{printacmref=false}
-
 \usepackage{url}
 
 
@@ -100,8 +99,11 @@
 %%
 %% end of the preamble, start of the body of the document source.
 
-%% % Location of your graphics files for figures, here a sub-folder to the main project folder
-\graphicspath{{./images/}} 
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, calc}
+\usepackage{pgfplots}
+
+\pgfplotsset{compat=1.18}
 
 
 \begin{document}
@@ -315,11 +317,67 @@ With this bridge in place, we can formulate each constraint using the most effic
 \end{enumerate}
 
 \section{Performance Comparison}
+Below is a graph representing the difference in performance between the three approaches. To obtain the data for the graph we used the instance generator provided. Some of the generator parameters were fixed, as shown below:
+\begin{itemize}
+    \item minShifts = 1
+    \item maxShifts = numShiftsPerDay
+    \item Unavailability = 0.15
+    \item MaxNurses in Shifts = 0.4
+    \item maxCost = 5
+    \item seed starts at 0
+\end{itemize}
+
+We generate 5 instances per \verb|(a)| number of Nurses, \verb|(b)| number of days and \verb|(c)| number of shifts per day. The multiplication of these 3 parameters gives us our X axis. We start at 3 days, 4 shifts per day and 5 nurses and increment each parameter (as is done in the public tests). 
+
+\begin{figure}[h]
+\centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            xlabel={Days $\times$ ShiftsPerDay $\times$ Nurses ($D \times S \times n$)},            ylabel={Average Time to Solve (s)},
+            title={Speed Comparison of the Described Encodings},
+            grid=major,
+            width=0.9\linewidth,
+            legend style={
+              at={(0.5,-0.2)},        % Position below plot
+              anchor=north,           % Anchor point
+              legend columns=3}
+            ]
+            % --- Plot 1 ---
+            % Original data
+            \addplot[
+                color=orange,
+                mark=x,
+                only marks,
+                opacity=0.6
+            ] table [col sep=comma, x=x_values, y=avg_seconds] {data4.csv};
+            
+            % Polynomial regression (degree 4)
+            \addplot[orange, ultra thick, domain=0:3000, samples=250]
+      { (2.91204237e-12)*x^4
+        + (-1.39391413e-8)*x^3
+        + (2.86535831e-5)*x^2
+        + (-1.30220938e-2)*x
+        + 1.98913986 };
+            \addlegendentry{Integer Encoding Polynomial Regression ($R^2 \approx 0.81$)}
+
+        
+            % --- Plot 2 ---
+
+        
+            % --- Plot 3 ---
+            
+        \end{axis}
+    \end{tikzpicture}
+
+    \caption{Function plot rendered using PGFPlots.}
+    \Description{A plot of a mathematical function generated from data in data.csv.}
+\end{figure}
+
 
 TODO
 
 \section{Algorithm and Configuration}
-The encoding was implemented in Python, and the resulting formula was provided to Microsoft's Z3 SMT Solver \cite{z3}, accessed via the \texttt{z3-solver} library. The \texttt{Optimize} class is used to handle the problem, as it is designed to find a model that not only satisfies all the hard constraints but also minimizes an objective function, which in this case is the total assignment cost. We set the solver strategy to use a Pareto approach (via \texttt{solver.set(priority='pareto')}) since we empirically observe that it provides a significant improvement in solving time compared to the default.
+All encodings were implemented in Python, and the resulting formulas were provided to Microsoft's Z3 SMT Solver \cite{z3}, accessed via the \texttt{z3-solver} library. The \texttt{Optimize} class is used to handle the problem, as it is designed to find a model that not only satisfies all the hard constraints but also minimizes an objective function, which in this case is the total assignment cost. We set the solver strategy to use a Pareto priority (via \texttt{solver.set(priority='pareto')}) since we empirically observe that it provides a significant improvement in solving time compared to the default lexicographic priority.
 
 \section{Installing and running}
 This project was implemented in Python. The sole dependency is z3-python, which can be installed via pip:
@@ -340,3 +398,4 @@ python3 project2.py < [input.txt] > [output.txt]
 \newpage
 
 \end{document}
+
