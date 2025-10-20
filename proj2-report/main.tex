@@ -334,7 +334,7 @@ We generate 5 instances per \verb|(a)| number of Nurses, \verb|(b)| number of da
     \begin{tikzpicture}
         \begin{axis}[
             xlabel={Days $\times$ ShiftsPerDay $\times$ Nurses ($D \times S \times n$)},            ylabel={Average Time to Solve (s)},
-            title={Speed Comparison of the Described Encodings},
+            title={},
             grid=major,
             width=0.9\linewidth,
             legend style={
@@ -345,44 +345,82 @@ We generate 5 instances per \verb|(a)| number of Nurses, \verb|(b)| number of da
             % --- Plot 1 ---
             % Original data
             \addplot[
-                color=orange,
+                color=green,
                 mark=x,
                 only marks,
-                opacity=0.6
+                opacity=0.8,
+                forget plot
             ] table [col sep=comma, x=x_values, y=avg_seconds] {data4.csv};
             
             % Polynomial regression (degree 4)
-            \addplot[orange, ultra thick, domain=0:3000, samples=250]
-      { (2.91204237e-12)*x^4
-        + (-1.39391413e-8)*x^3
-        + (2.86535831e-5)*x^2
-        + (-1.30220938e-2)*x
-        + 1.98913986 };
-            \addlegendentry{Integer Encoding Polynomial Regression ($R^2 \approx 0.81$)}
+            \addplot[green, ultra thick, domain=0:3000, samples=250]
+            { (2.91204237e-12)*x^4
+                + (-1.39391413e-8)*x^3
+                + (2.86535831e-5)*x^2
+                + (-1.30220938e-2)*x
+                + 1.98913986 };
+            \addlegendentry{Integer Encoding}
 
-        
             % --- Plot 2 ---
+            % Original data
+            \addplot[
+                color=blue,
+                mark=x,
+                only marks,
+                opacity=0.6,
+                forget plot
+            ] table [col sep=comma, x=x_values, y=avg_seconds] {data2.csv};
 
+            % Polynomial regression (degree 4)
+            \addplot[blue, ultra thick, domain=0:3000, samples=250]
+            { (5.28664150e-13)*x^4
+                + (-4.35104181e-9)*x^3
+                + (1.03193886e-5)*x^2
+                + (-4.34444086e-3)*x
+                + 0.6736883039 };
+            \addlegendentry{Boolean Encoding}
         
             % --- Plot 3 ---
+            % Original data
+            \addplot[
+                color=red,
+                mark=x,
+                only marks,
+                opacity=0.6,
+                forget plot
+            ] table [col sep=comma, x=x_values, y=avg_seconds] {data5.csv};
+
+            % Polynomial regression (degree 4)
+            \addplot[
+                red,
+                ultra thick,
+                domain=0:3000,
+                samples=300
+            ]
+            { (2.18957520e-12)*x^4
+              + (-1.01917856e-8)*x^3
+              + (2.33457630e-5)*x^2
+              + (-1.23467363e-2)*x
+              + 1.93332220 };
+            \addlegendentry{Hybrid Encoding}
+            
             
         \end{axis}
     \end{tikzpicture}
 
-    \caption{Function plot rendered using PGFPlots.}
-    \Description{A plot of a mathematical function generated from data in data.csv.}
+    \caption{Speed Comparison of the Encodings}
+    \Description{}
 \end{figure}
 
-
-TODO
+Although the performance difference in instances with smaller $DSn$ is negligible, for larger values the boolean encoding significantly outperforms the integer and hybrid encodings. This is probably explained by the fact that the predicate $Works(k, d, s)$ used for the integer encoding does not scale well to a large number of shifts. We also don't see a big improvement when using the hybrid approach likely because the introduced "bridge" adds a significant overhead similar to the $Works(k, d, s)$ predicate. 
 
 \section{Algorithm and Configuration}
 All encodings were implemented in Python, and the resulting formulas were provided to Microsoft's Z3 SMT Solver \cite{z3}, accessed via the \texttt{z3-solver} library. The \texttt{Optimize} class is used to handle the problem, as it is designed to find a model that not only satisfies all the hard constraints but also minimizes an objective function, which in this case is the total assignment cost. We set the solver strategy to use a Pareto priority (via \texttt{solver.set(priority='pareto')}) since we empirically observe that it provides a significant improvement in solving time compared to the default lexicographic priority.
 
 \section{Installing and running}
-This project was implemented in Python. The sole dependency is z3-python, which can be installed via pip:
+This project was implemented in Python. The sole dependency is z3-solver, which can be installed via pip:
 \begin{verbatim}
-pip3 install z3-python
+pip3 install z3-solver
 \end{verbatim}
 The program can be executed with the following command:
 \begin{verbatim}
