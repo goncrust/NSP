@@ -158,11 +158,10 @@ The Nurse Scheduling Problem (NSP) involves creating an optimal shift schedule f
     \item The schedule must consider nurses' shift preferences. An optimal solution aims to minimize the total cost associated with the assignments.
 \end{enumerate}
 
-\section{Description of the Encoding}
+\section{Description of General Variables}
 
 We first define a set of variables to represent the schedule and then encode the problem's constraints as clauses.
 
-\subsection{Definition of Variables}
 \begin{itemize}
     \item Let $D$ be a positive integer representing the number of days in the scheduling period.
     \item Let $S$ be a positive integer representing the number of shifts per day, all with the same duration, that cover the full 24 hours. For example, if $S = 4$, each shift will have 6 hours.
@@ -174,8 +173,9 @@ We first define a set of variables to represent the schedule and then encode the
     \item Let $P_{k,s,d}$ be the cost of assigning nurse $N_k$ to shift $s$ on day $d$. If $P_{k,s,d} = -1$, nurse $N_k$ is not available for that shift. All other costs are positive integers representing preferences (a lower cost is better).
 \end{itemize}
 
-\subsection{Modeling Constraints}
+\section{Description of the Encodings}
 
+\subsection{Integer Encoding}
 This problem can be modeled and solved using SMT. 
 
 We define a set of integer variables that describe the schedule more abstractly than using boolean assignments. For each nurse $k \in \{1, \dots, n\}$ and each day $d \in \{0, \dots, D-1\}$, we define two core integer variables:
@@ -240,8 +240,6 @@ The constraints are then defined as follows, using an indicator function $\mathb
         \text{minimize } \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} \sum_{k=1, P_{k,s,d} \ge 0}^{n} \mathbb{I}(Works(k, d, s)) \cdot P_{k,s,d}
     \end{equation}
 \end{enumerate}
-
-\section{Alternative Encodings}
 
 \subsection{Boolean Encoding}
 
@@ -412,7 +410,7 @@ We generate 5 instances per \verb|(a)| number of Nurses, \verb|(b)| number of da
     \Description{}
 \end{figure}
 
-Although the performance difference in instances with smaller $DSn$ is negligible, for larger values the boolean encoding significantly outperforms the integer and hybrid encodings. This is probably explained by the fact that the predicate $Works(k, d, s)$ used for the integer encoding does not scale well to a large number of shifts. We also don't see a big improvement when using the hybrid approach likely because the introduced "bridge" adds a significant overhead similar to the $Works(k, d, s)$ predicate. 
+Although the performance difference in instances with smaller $DSn$ is negligible, for larger values the boolean encoding significantly outperforms the integer and hybrid encodings. This is probably explained by the fact that the predicate $Works(k, d, s)$ used for the integer encoding does not scale well to a large number of shifts. We also don't see a big improvement when using the hybrid approach likely because the introduced "bridge" adds a significant overhead similar to the $Works(k, d, s)$ predicate. Because of the difference in performance, we submitted the Boolean Encoding to the project repository.
 
 \section{Algorithm and Configuration}
 All encodings were implemented in Python, and the resulting formulas were provided to Microsoft's Z3 SMT Solver \cite{z3}, accessed via the \texttt{z3-solver} library. The \texttt{Optimize} class is used to handle the problem, as it is designed to find a model that not only satisfies all the hard constraints but also minimizes an objective function, which in this case is the total assignment cost. We set the solver strategy to use a Pareto priority (via \texttt{solver.set(priority='pareto')}) since we empirically observe that it provides a significant improvement in solving time compared to the default lexicographic priority.
